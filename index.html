@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1a6ef5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>SyncDoc</title>
+<style>
+/* ── Tokens ─────────────────────────────────────────── */
+:root {
+  --blue:    #1a6ef5;
+  --blue-d:  #1458c8;
+  --blue-l:  #e8f0fe;
+  --green:   #0fa968;
+  --green-l: #e6f7f1;
+  --red:     #e53935;
+  --red-l:   #fdecea;
+  --amber:   #f59e0b;
+  --bg:      #f4f6fb;
+  --surface: #ffffff;
+  --border:  #dde2ee;
+  --text:    #1a1f36;
+  --muted:   #6b738f;
+  --radius:  12px;
+  --radius-s: 8px;
+  --shadow:  0 1px 4px rgba(26,31,54,.08), 0 4px 16px rgba(26,31,54,.06);
+  --shadow-s: 0 1px 3px rgba(26,31,54,.08);
+}
+
+/* ── Reset ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ── Header ──────────────────────────────────────────── */
+.app-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  gap: 10px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.025em;
+  text-decoration: none;
+}
+
+.logo-mark {
+  width: 30px;
+  height: 30px;
+  background: var(--blue);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.conn-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 10px;
+}
+
+.conn-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  transition: background .3s;
+}
+.conn-dot.on { background: var(--green); }
+
+.devices-pill {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue);
+  background: var(--blue-l);
+  border-radius: 20px;
+  padding: 4px 10px;
+}
+
+/* ── Nav Tabs ─────────────────────────────────────────── */
+.nav-tabs {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.nav-tabs::-webkit-scrollbar { display: none; }
+
+.nav-tab {
+  flex: 1;
+  min-width: 90px;
+  padding: 12px 8px 11px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-tab .tab-icon { font-size: 18px; line-height: 1; }
+.nav-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+.nav-tab:active { background: var(--bg); }
+
+/* ── Main ────────────────────────────────────────────── */
+main {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.panel {
+  display: none;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+  padding-bottom: 32px;
+}
+.panel.active { display: block; }
+
+/* ── Toast ───────────────────────────────────────────── */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1a1f36;
+  color: #fff;
+  padding: 9px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .25s, transform .25s;
+  z-index: 200;
+  pointer-events: none;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Card ────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-s);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+
+.card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── Buttons ─────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 14px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btn:active { opacity: .8; }
+.btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+.btn.danger  { border-color: var(--border); color: var(--red); }
+.btn.small   { padding: 5px 10px; font-size: 12px; }
+.btn.icon    { padding: 7px; border-radius: 8px; }
+
+/* ── Free Text ───────────────────────────────────────── */
+#freeTextArea {
+  display: block;
+  width: 100%;
+  min-height: 260px;
+  padding: 14px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+  border: none;
+  outline: none;
+  resize: vertical;
+  background: transparent;
+}
+
+.text-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.char-count {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sync-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--green);
+  opacity: 0;
+  transition: opacity .3s;
+}
+.sync-badge.show { opacity: 1; }
+
+/* ── Remote highlight ─────────────────────────────────── */
+@keyframes remotePulse {
+  0%   { background: var(--blue-l); }
+  100% { background: transparent; }
+}
+.remote-flash { animation: remotePulse .8s ease-out forwards; }
+
+/* ── Form ────────────────────────────────────────────── */
+.form-section {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.field label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.field input,
+.field textarea,
+.field select {
+  padding: 11px 13px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  outline: none;
+  width: 100%;
+  transition: border-color .15s, box-shadow .15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.field input:focus,
+.field textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(26,110,245,.12);
+}
+.field textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.55;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-actions {
+  padding: 0 16px 16px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Section divider ──────────────────────────────────── */
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 4px 0 2px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+.section-label:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+
+/* ── Files ───────────────────────────────────────────── */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  background: var(--surface);
+  margin-bottom: 14px;
+}
+.upload-zone:active,
+.upload-zone.drag-over {
+  border-color: var(--blue);
+  background: var(--blue-l);
+}
+.upload-zone input { display: none; }
+.upload-icon { font-size: 2rem; margin-bottom: 8px; }
+.upload-primary { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.upload-sub { font-size: 12px; color: var(--muted); }
+
+.files-list { display: flex; flex-direction: column; gap: 8px; }
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  padding: 12px 14px;
+  animation: slideIn .25s ease;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.file-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: var(--blue-l);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.file-details { flex: 1; min-width: 0; }
+.file-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+.file-meta { font-size: 11px; color: var(--muted); }
+
+.file-actions-wrap { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* ── Empty state ──────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+.empty-icon { font-size: 2.2rem; margin-bottom: 10px; }
+.empty-text { font-size: 13px; }
+
+/* ── Offline overlay ──────────────────────────────────── */
+#offlineOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(244,246,251,.92);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  gap: 14px;
+  padding: 32px;
+  text-align: center;
+}
+#offlineOverlay.hidden { display: none; }
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin .75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.overlay-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+.overlay-sub { font-size: 13px; color: var(--muted); }
+
+/* ── Responsive tweaks ────────────────────────────────── */
+@media (min-width: 600px) {
+  .app-header { padding: 0 24px; height: 60px; }
+  .panel { padding: 20px 24px 40px; }
+  .field-row { grid-template-columns: 1fr 1fr; }
+
+  #freeTextArea { min-height: 400px; font-size: 15px; }
+
+  .nav-tab { flex-direction: row; gap: 6px; font-size: 14px; padding: 14px 16px; }
+  .nav-tab .tab-icon { font-size: 16px; }
+}
+
+@media (min-width: 900px) {
+  .panel { max-width: 780px; margin: 0 auto; }
+}
+
+/* ── Safe area bottom (iOS) ───────────────────────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .panel { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
+}
+</style>
+</head>
+<body>
+
+<!-- Offline overlay -->
+<div id="offlineOverlay">
+  <div class="spinner"></div>
+  <div>
+    <div class="overlay-title">Conectando…</div>
+    <div class="overlay-sub">Aguardando o servidor</div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Header -->
+<header class="app-header">
+  <div class="logo">
+    <div class="logo-mark">⚡</div>
+    SyncDoc
+  </div>
+  <div class="header-right">
+    <div class="conn-pill">
+      <div class="conn-dot" id="connDot"></div>
+      <span id="connLabel">Offline</span>
+    </div>
+    <div class="devices-pill" id="devicesPill">0 📱</div>
+  </div>
+</header>
+
+<!-- Navigation tabs -->
+<nav class="nav-tabs">
+  <button class="nav-tab active" data-tab="text">
+    <span class="tab-icon">✏️</span>
+    Texto
+  </button>
+  <button class="nav-tab" data-tab="form">
+    <span class="tab-icon">📋</span>
+    Prontuário
+  </button>
+  <button class="nav-tab" data-tab="files">
+    <span class="tab-icon">📁</span>
+    Arquivos
+  </button>
+</nav>
+
+<!-- Main content -->
+<main>
+
+  <!-- TEXT PANEL -->
+  <div class="panel active" id="panel-text">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Editor em tempo real</span>
+        <button class="btn small danger" onclick="clearText()">🗑 Limpar</button>
+      </div>
+      <textarea id="freeTextArea"
+        placeholder="Digite aqui… o texto aparece em todos os dispositivos conectados ao mesmo tempo."></textarea>
+      <div class="text-footer">
+        <span class="char-count"><span id="charCount">0</span> caracteres</span>
+        <span class="sync-badge" id="syncBadge">✓ Sincronizado</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORM PANEL -->
+  <div class="panel" id="panel-form">
+
+    <!-- Identificação -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Identificação do Paciente</span>
+      </div>
+      <div class="form-section">
+        <div class="field">
+          <label>Nome completo</label>
+          <input type="text" id="f-paciente" data-field="paciente" placeholder="Nome do paciente" autocomplete="off">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Nascimento</label>
+            <input type="date" id="f-nascimento" data-field="nascimento">
+          </div>
+          <div class="field">
+            <label>CPF</label>
+            <input type="text" id="f-cpf" data-field="cpf" placeholder="000.000.000-00" inputmode="numeric">
+          </div>
+        </div>
+        <div class="field">
+          <label>Convênio / Plano</label>
+          <input type="text" id="f-convenio" data-field="convenio" placeholder="Particular, Unimed…">
+        </div>
+      </div>
+    </div>
+
+    <!-- Consulta -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Consulta</span>
+      </div>
+      <div class="form-section">
+        <div class="field">
+          <label>Queixa principal</label>
+          <textarea id="f-queixa" data-field="queixa" placeholder="Motivo da consulta…"></textarea>
+        </div>
+        <div class="field">
+          <label>Histórico / Anamnese</label>
+          <textarea id="f-historico" data-field="historico" placeholder="HDA, antecedentes, medicamentos em uso…" style="min-height:110px"></textarea>
+        </div>
+        <div class="field">
+          <label>Exame físico</label>
+          <textarea id="f-exame" data-field="exame" placeholder="Achados do exame…"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Conclusão -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Conclusão</span>
+      </div>
+      <div class="form-section">
+        <div class="field">
+          <label>Hipótese diagnóstica / CID</label>
+          <textarea id="f-hipotese" data-field="hipotese" placeholder="Diagnóstico…"></textarea>
+        </div>
+        <div class="field">
+          <label>Conduta / Prescrição</label>
+          <textarea id="f-conduta" data-field="conduta" placeholder="Tratamento, medicamentos, orientações…" style="min-height:110px"></textarea>
+        </div>
+        <div class="field">
+          <label>Data de retorno</label>
+          <input type="date" id="f-retorno" data-field="retorno">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn primary" onclick="printForm()">🖨 Imprimir</button>
+        <button class="btn danger" onclick="clearForm()">🗑 Limpar tudo</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FILES PANEL -->
+  <div class="panel" id="panel-files">
+
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" multiple>
+      <div class="upload-icon">📤</div>
+      <div class="upload-primary">Toque para enviar arquivos</div>
+      <div class="upload-sub">PDF, imagens, Word, etc. · Máx 10 MB por arquivo</div>
+    </div>
+
+    <div class="files-list" id="filesList">
+      <div class="empty-state">
+        <div class="empty-icon">📂</div>
+        <div class="empty-text">Nenhum arquivo ainda.<br>Envie um para compartilhar com todos os dispositivos.</div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+// ── Estado ────────────────────────────────────────────
+let ws = null;
+let myId = null;
+let isRemote = false;
+const fileCache = {};
+
+// ── WebSocket ─────────────────────────────────────────
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}`);
+
+  ws.onopen = () => {
+    document.getElementById('offlineOverlay').classList.add('hidden');
+    document.getElementById('connDot').classList.add('on');
+    document.getElementById('connLabel').textContent = 'Online';
+  };
+
+  ws.onclose = () => {
+    document.getElementById('offlineOverlay').classList.remove('hidden');
+    document.getElementById('connDot').classList.remove('on');
+    document.getElementById('connLabel').textContent = 'Offline';
+    setTimeout(connect, 2500);
+  };
+
+  ws.onerror = () => ws.close();
+
+  ws.onmessage = ({ data }) => {
+    let msg;
+    try { msg = JSON.parse(data); } catch { return; }
+    onMessage(msg);
+  };
+}
+
+function onMessage(msg) {
+  switch (msg.type) {
+
+    case 'init':
+      myId = msg.clientId;
+      applyFullState(msg.state);
+      break;
+
+    case 'freeText': {
+      isRemote = true;
+      const ta = document.getElementById('freeTextArea');
+      const s = ta.selectionStart, e = ta.selectionEnd;
+      ta.value = msg.value;
+      try { ta.setSelectionRange(s, e); } catch {}
+      isRemote = false;
+      updateCount();
+      flashEl(ta);
+      showSync();
+      break;
+    }
+
+    case 'formField': {
+      isRemote = true;
+      const el = document.getElementById(`f-${msg.field}`);
+      if (el) { el.value = msg.value; flashEl(el); }
+      isRemote = false;
+      showSync();
+      break;
+    }
+
+    case 'clearForm':
+      clearFormFields();
+      break;
+
+    case 'clearText':
+      document.getElementById('freeTextArea').value = '';
+      updateCount();
+      break;
+
+    case 'fileAdded':
+      fileCache[msg.file.id] = msg.file;
+      prependFileCard(msg.file, true);
+      showSync();
+      break;
+
+    case 'fileDeleted': {
+      delete fileCache[msg.id];
+      const el = document.querySelector(`[data-fid="${msg.id}"]`);
+      if (el) el.remove();
+      checkEmpty();
+      break;
+    }
+
+    case 'clients':
+      document.getElementById('devicesPill').textContent = `${msg.count} 📱`;
+      break;
+
+    case 'error':
+      toast(msg.msg, 'red');
+      break;
+  }
+}
+
+// ── Apply full state ──────────────────────────────────
+function applyFullState(state) {
+  document.getElementById('freeTextArea').value = state.freeText || '';
+  updateCount();
+
+  for (const [k, v] of Object.entries(state.form || {})) {
+    const el = document.getElementById(`f-${k}`);
+    if (el) el.value = v;
+  }
+
+  const list = document.getElementById('filesList');
+  list.innerHTML = '';
+  const files = state.files || [];
+  if (!files.length) {
+    list.innerHTML = emptyHTML();
+  } else {
+    // Newest first
+    [...files].reverse().forEach(f => {
+      fileCache[f.id] = f;
+      prependFileCard(f, false);
+    });
+  }
+}
+
+// ── Tabs ──────────────────────────────────────────────
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(`panel-${tab.dataset.tab}`).classList.add('active');
+  });
+});
+
+// ── Free text ─────────────────────────────────────────
+let textTimer = null;
+document.getElementById('freeTextArea').addEventListener('input', () => {
+  if (isRemote) return;
+  updateCount();
+  clearTimeout(textTimer);
+  textTimer = setTimeout(() => {
+    send({ type: 'freeText', value: document.getElementById('freeTextArea').value });
+  }, 80);
+});
+
+function updateCount() {
+  document.getElementById('charCount').textContent =
+    document.getElementById('freeTextArea').value.length;
+}
+
+function clearText() {
+  if (!confirm('Limpar o texto em todos os dispositivos?')) return;
+  document.getElementById('freeTextArea').value = '';
+  updateCount();
+  send({ type: 'clearText' });
+}
+
+// ── Form ──────────────────────────────────────────────
+const fieldTimers = {};
+document.querySelectorAll('[data-field]').forEach(el => {
+  el.addEventListener('input', () => {
+    if (isRemote) return;
+    const field = el.dataset.field;
+    clearTimeout(fieldTimers[field]);
+    fieldTimers[field] = setTimeout(() => {
+      send({ type: 'formField', field, value: el.value });
+    }, 120);
+  });
+});
+
+function clearForm() {
+  if (!confirm('Limpar o prontuário em todos os dispositivos?')) return;
+  clearFormFields();
+  send({ type: 'clearForm' });
+}
+function clearFormFields() {
+  document.querySelectorAll('[data-field]').forEach(el => el.value = '');
+}
+function printForm() { window.print(); }
+
+// ── Files ─────────────────────────────────────────────
+const zone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+
+zone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => { handleFiles(e.target.files); fileInput.value = ''; });
+
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+});
+
+function handleFiles(list) {
+  for (const f of list) {
+    if (f.size > 10 * 1024 * 1024) { toast(`"${f.name}" excede 10 MB.`, 'red'); continue; }
+    const reader = new FileReader();
+    reader.onload = ev => send({
+      type: 'fileUpload',
+      name: f.name,
+      fileType: f.type,
+      size: f.size,
+      dataUrl: ev.target.result
+    });
+    reader.readAsDataURL(f);
+  }
+}
+
+function prependFileCard(file, animate) {
+  const list = document.getElementById('filesList');
+  const empty = list.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  const card = document.createElement('div');
+  card.className = 'file-item';
+  card.dataset.fid = file.id;
+  if (!animate) card.style.animation = 'none';
+
+  const size = fmtSize(file.size);
+  const date = new Date(file.uploadedAt).toLocaleString('pt-BR', { dateStyle:'short', timeStyle:'short' });
+
+  card.innerHTML = `
+    <div class="file-icon-wrap">${fileIcon(file.fileType, file.name)}</div>
+    <div class="file-details">
+      <div class="file-name">${esc(file.name)}</div>
+      <div class="file-meta">${size} · ${date}</div>
+    </div>
+    <div class="file-actions-wrap">
+      <button class="btn icon small" title="Baixar" onclick="dlFile(${JSON.stringify(file.id)})">⬇</button>
+      <button class="btn icon small danger" title="Remover" onclick="delFile(${JSON.stringify(file.id)})">✕</button>
+    </div>
+  `;
+  list.insertBefore(card, list.firstChild);
+}
+
+function dlFile(id) {
+  const f = fileCache[id];
+  if (!f) { toast('Arquivo não disponível. Recarregue a página.', 'red'); return; }
+  const a = document.createElement('a');
+  a.href = f.dataUrl;
+  a.download = f.name;
+  a.click();
+}
+
+function delFile(id) {
+  if (!confirm('Remover este arquivo de todos os dispositivos?')) return;
+  delete fileCache[id];
+  const el = document.querySelector(`[data-fid="${id}"]`);
+  if (el) el.remove();
+  checkEmpty();
+  send({ type: 'fileDelete', id });
+}
+
+function checkEmpty() {
+  const list = document.getElementById('filesList');
+  if (!list.children.length) list.innerHTML = emptyHTML();
+}
+function emptyHTML() {
+  return `<div class="empty-state"><div class="empty-icon">📂</div><div class="empty-text">Nenhum arquivo ainda.<br>Envie um para compartilhar com todos os dispositivos.</div></div>`;
+}
+
+// ── UI helpers ────────────────────────────────────────
+let syncTimer = null;
+function showSync() {
+  const b = document.getElementById('syncBadge');
+  b.classList.add('show');
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => b.classList.remove('show'), 1600);
+}
+
+function flashEl(el) {
+  el.classList.remove('remote-flash');
+  void el.offsetWidth; // reflow
+  el.classList.add('remote-flash');
+  setTimeout(() => el.classList.remove('remote-flash'), 800);
+}
+
+let toastTimer = null;
+function toast(msg, color = 'dark') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color === 'red' ? '#c62828' : '#1a1f36';
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function fileIcon(type, name) {
+  if (!type) type = '';
+  if (type.includes('pdf') || name.endsWith('.pdf')) return '📄';
+  if (type.startsWith('image/')) return '🖼️';
+  if (type.includes('word') || /\.docx?$/.test(name)) return '📝';
+  if (type.includes('sheet') || /\.(xlsx?|csv)$/.test(name)) return '📊';
+  if (type.startsWith('video/')) return '🎬';
+  if (type.startsWith('audio/')) return '🎵';
+  if (type.includes('zip') || type.includes('compress') || /\.(zip|rar|7z)$/.test(name)) return '🗜️';
+  return '📎';
+}
+
+function fmtSize(b) {
+  if (!b) return '—';
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(1) + ' MB';
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ── Send ──────────────────────────────────────────────
+function send(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN)
+    ws.send(JSON.stringify(obj));
+}
+
+// ── Boot ──────────────────────────────────────────────
+connect();
+</script>
+</body>
+</html>

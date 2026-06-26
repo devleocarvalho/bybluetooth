@@ -1,4 +1,4 @@
-# SyncDoc — Guia Completo
+# semfio — Guia Completo
 
 ## Índice
 1. [Como instalar e rodar](#1-como-instalar-e-rodar)
@@ -17,7 +17,7 @@ Baixe em: https://nodejs.org (versão LTS recomendada)
 ### Passo a passo local (mesma rede Wi-Fi)
 
 ```bash
-# 1. Descompacte a pasta syncdoc2
+# 1. Descompacte a pasta semfio
 # 2. Abra o terminal dentro dela e execute:
 
 npm install       # instala a dependência (ws)
@@ -27,7 +27,7 @@ node server.js    # inicia o servidor
 O terminal vai mostrar:
 ```
 📂 Banco carregado: /seu/caminho/data.json
-✅ SyncDoc rodando em http://localhost:3000
+✅ semfio rodando em http://localhost:3000
 ```
 
 **Acessando de outros dispositivos na mesma rede Wi-Fi:**
@@ -59,19 +59,20 @@ O deploy na nuvem permite acesso de **qualquer lugar**, sem precisar estar na me
    - `server.js`
    - `index.html`
    - `package.json`
+   - `.gitignore`
 
-3. No Railway: **New Project → Deploy from GitHub Repo** → selecione o repositório
+3. No Railway: **New Project → Deploy from GitHub Repo** → selecione o repositório `semfio-`
 
 4. Aguarde o deploy (~1 minuto). Acesse **Settings → Networking → Generate Domain**.
 
 5. Você recebe uma URL do tipo:
-   `https://syncdoc-producao.up.railway.app`
+   `https://semfio-producao.up.railway.app`
 
 6. Abra essa URL **no PC e no celular** — eles exibem e editam os mesmos dados.
 
-> **Persistência no Railway:** adicione um **Volume** em Settings e altere no `server.js`:
-> ```javascript
-> const DB_PATH = '/data/data.json'; // em vez de __dirname
+> **Persistência no Railway:** adicione um **Volume** em Settings e altere no `server.js` (ou use a variável de ambiente `DB_PATH` nas configurações do Railway):
+> ```
+> DB_PATH = /data/data.json
 > ```
 > Isso garante que os dados sobrevivam a redeploys.
 
@@ -87,12 +88,12 @@ O deploy na nuvem permite acesso de **qualquer lugar**, sem precisar estar na me
 
 ## 3. Resposta: um app pode funcionar assim?
 
-### Sim — e é exatamente o que o SyncDoc faz.
+### Sim — e é exatamente o que o semfio faz.
 
 O que você está descrevendo é chamado de **aplicação web sincronizada em tempo real**. Funciona assim:
 
 ```
-  [PC sede]          [Servidor na nuvem]       [Celular]
+  [PC Sede]          [Servidor na nuvem]       [Celular]
      |                      |                     |
      |--- digita texto ----> |                     |
      |                      |--- envia para -----> |
@@ -113,12 +114,12 @@ O que você está descrevendo é chamado de **aplicação web sincronizada em te
 
 ### Comparação com apps conhecidos
 
-| App | Tecnologia | Similaridade com SyncDoc |
+| App | Tecnologia | Similaridade com semfio |
 |-----|-----------|--------------------------|
 | Google Docs | WebSocket + banco de dados | Muito similar |
 | WhatsApp Web | WebSocket | Similar (mensagens em tempo real) |
 | Notion | WebSocket + banco de dados | Similar |
-| **SyncDoc** | WebSocket + JSON file | Versão simplificada dos acima |
+| **semfio** | WebSocket + JSON file | Versão simplificada dos acima |
 
 ### Dispositivos suportados
 
@@ -130,7 +131,7 @@ Qualquer dispositivo com navegador moderno funciona:
 
 ### O que significa "mesmo aplicativo" nesse contexto
 
-O SyncDoc **não é um app nativo** (não precisa instalar pela App Store ou Play Store). É uma **página web** que se comporta como um app:
+O semfio **não é um app nativo** (não precisa instalar pela App Store ou Play Store). É uma **página web** que se comporta como um app:
 
 - Abre no navegador do celular como qualquer site
 - Pode ser "instalado" na tela inicial do celular via **"Adicionar à tela inicial"** (no Chrome/Safari)
@@ -145,14 +146,12 @@ O SyncDoc **não é um app nativo** (não precisa instalar pela App Store ou Pla
 
 | Limitação | Impacto | Solução |
 |-----------|---------|---------|
-| Sem login | Qualquer um com a URL pode editar | Adicionar senha simples |
 | Sem histórico de versões | Não é possível "desfazer" edições de outros | Adicionar log de alterações |
 | Arquivos em memória (~10 MB cada) | Arquivos grandes podem sobrecarregar | Usar armazenamento externo (AWS S3, etc.) |
 | Um prontuário por vez | Não gerencia múltiplos pacientes | Adicionar sistema de múltiplos registros |
 
 ### O que pode ser adicionado
 
-- **Login com senha** — para proteger o acesso
 - **Múltiplos prontuários** — lista de pacientes com busca
 - **Histórico de edições** — quem editou o quê e quando
 - **Impressão formatada** — layout profissional para imprimir o prontuário
@@ -160,4 +159,4 @@ O SyncDoc **não é um app nativo** (não precisa instalar pela App Store ou Pla
 
 ---
 
-*SyncDoc v2 — Documentação gerada em junho de 2026*
+*semfio — Documentação gerada em junho de 2026*

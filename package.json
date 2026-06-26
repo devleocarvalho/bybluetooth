@@ -1,5 +1,5 @@
 {
-  "name": "syncdoc",
+  "name": "semfio",
   "version": "2.0.0",
   "description": "Sincronização em tempo real entre dispositivos com persistência",
   "main": "server.js",

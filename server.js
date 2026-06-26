@@ -4,7 +4,17 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = process.env.PORT || 3000;
-const DB_PATH = path.join(__dirname, 'data.json');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data.json');
+
+// Garantir que a pasta do banco de dados exista
+const dbDir = path.dirname(DB_PATH);
+if (!fs.existsSync(dbDir)) {
+  try {
+    fs.mkdirSync(dbDir, { recursive: true });
+  } catch (err) {
+    console.error('Erro ao criar pasta do banco:', err.message);
+  }
+}
 
 // ── Persistência JSON ──────────────────────────────────────────────────────
 function loadDB() {

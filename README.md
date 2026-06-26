@@ -1,4 +1,4 @@
-# SyncDoc v2 — Sincronização Permanente
+# semfio — Sincronização Permanente
 
 Editor colaborativo em tempo real com **dados salvos permanentemente** no servidor.
 

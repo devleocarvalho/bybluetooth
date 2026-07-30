@@ -21,7 +21,7 @@ function loadDB() {
   try {
     if (fs.existsSync(DB_PATH)) {
       const parsed = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-      if (!parsed.tasks) parsed.tasks = [];
+      if (!parsed.links) parsed.links = [];
       return parsed;
     }
   } catch (e) {
@@ -29,7 +29,7 @@ function loadDB() {
   }
   return {
     freeText: '',
-    tasks: [],
+    links: [],
     files: []
   };
 }
@@ -111,36 +111,28 @@ wss.on('connection', (ws, req) => {
         broadcast({ type: 'freeText', value: msg.value, from: ws._id }, ws);
         break;
 
-      case 'addTask':
-        const newTask = {
+      case 'addLink':
+        const newLink = {
           id: Date.now() + Math.random().toString(),
-          text: msg.text,
-          done: false
+          url: msg.url,
+          title: msg.title || msg.url,
+          addedAt: new Date().toISOString()
         };
-        db.tasks.push(newTask);
+        db.links.push(newLink);
         scheduleDB();
-        broadcast({ type: 'taskAdded', task: newTask, from: ws._id }, ws);
+        broadcast({ type: 'linkAdded', link: newLink, from: ws._id }, ws);
         break;
 
-      case 'toggleTask':
-        const task = db.tasks.find(t => t.id === msg.id);
-        if (task) {
-          task.done = msg.done;
-          scheduleDB();
-          broadcast({ type: 'taskToggled', id: msg.id, done: msg.done, from: ws._id }, ws);
-        }
+      case 'deleteLink':
+        db.links = db.links.filter(l => l.id !== msg.id);
+        scheduleDB();
+        broadcast({ type: 'linkDeleted', id: msg.id, from: ws._id }, ws);
         break;
 
-      case 'deleteTask':
-        db.tasks = db.tasks.filter(t => t.id !== msg.id);
+      case 'clearLinks':
+        db.links = [];
         scheduleDB();
-        broadcast({ type: 'taskDeleted', id: msg.id, from: ws._id }, ws);
-        break;
-
-      case 'clearTasks':
-        db.tasks = [];
-        scheduleDB();
-        broadcast({ type: 'tasksCleared' }, ws);
+        broadcast({ type: 'linksCleared' }, ws);
         break;
 
       case 'clearText':

@@ -486,10 +486,7 @@ main {
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .panel { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
 }
-/* ── Links ───────────────────────────────────────────── */
-.link-item { display: flex; align-items: center; gap: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-s); padding: 10px 14px; }
-.link-item a { flex: 1; font-size: 14px; font-weight: 500; word-break: break-all; color: var(--blue); text-decoration: none; }
-.link-item a:hover { text-decoration: underline; }
+
 </style>
 </head>
 <body>
@@ -533,10 +530,7 @@ main {
     <span class="tab-icon">✏️</span>
     Texto
   </button>
-  <button class="nav-tab" data-tab="links">
-    <span class="tab-icon">🔗</span>
-    Links
-  </button>
+
   <button class="nav-tab" data-tab="files">
     <span class="tab-icon">📁</span>
     Arquivos
@@ -562,28 +556,7 @@ main {
     </div>
   </div>
 
-  <!-- LINKS PANEL -->
-  <div class="panel" id="panel-links">
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Links Rápidos</span>
-        <button class="btn small danger" onclick="clearLinks()">🗑 Limpar tudo</button>
-      </div>
-      <div class="form-section" style="padding-bottom: 0;">
-        <div style="display: flex; gap: 10px;">
-          <input type="text" id="linkInput" style="flex:1; padding:11px 13px; border:1.5px solid var(--border); border-radius:var(--radius-s); background:var(--surface); color:var(--text); font-family:inherit; font-size:15px; outline:none;" placeholder="Cole o link aqui (ex: https://...)" onkeypress="if(event.key==='Enter') addLink()">
-          <button class="btn primary" onclick="addLink()">Adicionar</button>
-        </div>
-      </div>
-      <div class="form-section">
-        <div id="linksList" style="display: flex; flex-direction: column; gap: 8px;">
-          <div class="empty-state">
-            <div class="empty-text">Nenhum link ainda.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+
 
   <!-- FILES PANEL -->
   <div class="panel" id="panel-files">
@@ -661,23 +634,6 @@ function onMessage(msg) {
       break;
     }
 
-    case 'linkAdded':
-      prependLinkItem(msg.link, true);
-      showSync();
-      break;
-
-    case 'linkDeleted': {
-      const lEl = document.querySelector(`.link-item[data-lid="${msg.id}"]`);
-      if (lEl) lEl.remove();
-      checkLinksEmpty();
-      break;
-    }
-
-    case 'linksCleared':
-      const list = document.getElementById('linksList');
-      if (list) list.innerHTML = '<div class="empty-state"><div class="empty-text">Nenhum link ainda.</div></div>';
-      break;
-
     case 'clearText':
       document.getElementById('freeTextArea').value = '';
       updateCount();
@@ -721,17 +677,6 @@ function onMessage(msg) {
 function applyFullState(state) {
   document.getElementById('freeTextArea').value = state.freeText || '';
   updateCount();
-
-  const lList = document.getElementById('linksList');
-  if (lList) {
-    lList.innerHTML = '';
-    const links = state.links || [];
-    if (!links.length) {
-      lList.innerHTML = '<div class="empty-state"><div class="empty-text">Nenhum link ainda.</div></div>';
-    } else {
-      links.forEach(l => prependLinkItem(l, false));
-    }
-  }
 
   const list = document.getElementById('filesList');
   list.innerHTML = '';
@@ -778,52 +723,6 @@ function clearText() {
   document.getElementById('freeTextArea').value = '';
   updateCount();
   send({ type: 'clearText' });
-}
-
-// ── Links ──────────────────────────────────────────────
-function addLink() {
-  const input = document.getElementById('linkInput');
-  const url = input.value.trim();
-  if (!url) return;
-  // Simple validation to prepend http if missing
-  let finalUrl = url;
-  if (!/^https?:\/\//i.test(finalUrl)) {
-    finalUrl = 'https://' + finalUrl;
-  }
-  send({ type: 'addLink', url: finalUrl, title: url });
-  input.value = '';
-}
-function delLink(id) {
-  if (!confirm('Excluir este link em todos os dispositivos?')) return;
-  send({ type: 'deleteLink', id });
-}
-function clearLinks() {
-  if (!confirm('Limpar todos os links em todos os dispositivos?')) return;
-  send({ type: 'clearLinks' });
-}
-function prependLinkItem(link, animate) {
-  const list = document.getElementById('linksList');
-  if (!list) return;
-  const empty = list.querySelector('.empty-state');
-  if (empty) empty.remove();
-  
-  const div = document.createElement('div');
-  div.className = 'link-item';
-  div.dataset.lid = link.id;
-  if (!animate) div.style.animation = 'none';
-  
-  div.innerHTML = `
-    <span style="font-size: 18px;">🔗</span>
-    <a href="${esc(link.url)}" target="_blank" rel="noopener noreferrer">${esc(link.title)}</a>
-    <button class="btn icon small danger" onclick="delLink('${link.id}')">✕</button>
-  `;
-  list.appendChild(div);
-}
-function checkLinksEmpty() {
-  const list = document.getElementById('linksList');
-  if (list && !list.children.length) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-text">Nenhum link ainda.</div></div>';
-  }
 }
 
 // ── Files ─────────────────────────────────────────────

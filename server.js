@@ -20,16 +20,13 @@ if (!fs.existsSync(dbDir)) {
 function loadDB() {
   try {
     if (fs.existsSync(DB_PATH)) {
-      const parsed = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-      if (!parsed.links) parsed.links = [];
-      return parsed;
+      return JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
     }
   } catch (e) {
     console.error('Erro ao carregar banco:', e.message);
   }
   return {
     freeText: '',
-    links: [],
     files: []
   };
 }
@@ -111,29 +108,7 @@ wss.on('connection', (ws, req) => {
         broadcast({ type: 'freeText', value: msg.value, from: ws._id }, ws);
         break;
 
-      case 'addLink':
-        const newLink = {
-          id: Date.now() + Math.random().toString(),
-          url: msg.url,
-          title: msg.title || msg.url,
-          addedAt: new Date().toISOString()
-        };
-        db.links.push(newLink);
-        scheduleDB();
-        broadcast({ type: 'linkAdded', link: newLink, from: ws._id }, ws);
-        break;
 
-      case 'deleteLink':
-        db.links = db.links.filter(l => l.id !== msg.id);
-        scheduleDB();
-        broadcast({ type: 'linkDeleted', id: msg.id, from: ws._id }, ws);
-        break;
-
-      case 'clearLinks':
-        db.links = [];
-        scheduleDB();
-        broadcast({ type: 'linksCleared' }, ws);
-        break;
 
       case 'clearText':
         db.freeText = '';

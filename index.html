@@ -486,6 +486,12 @@ main {
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .panel { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
 }
+/* ── Tasks ───────────────────────────────────────────── */
+.task-item { display: flex; align-items: center; gap: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-s); padding: 10px 14px; }
+.task-item.done { opacity: 0.6; }
+.task-item.done .task-text { text-decoration: line-through; }
+.task-text { flex: 1; font-size: 14px; font-weight: 500; word-break: break-word; }
+.task-cb { width: 18px; height: 18px; cursor: pointer; accent-color: var(--blue); }
 </style>
 </head>
 <body>
@@ -523,9 +529,9 @@ main {
     <span class="tab-icon">✏️</span>
     Texto
   </button>
-  <button class="nav-tab" data-tab="form">
-    <span class="tab-icon">📋</span>
-    Prontuário
+  <button class="nav-tab" data-tab="tasks">
+    <span class="tab-icon">☑️</span>
+    Tarefas
   </button>
   <button class="nav-tab" data-tab="files">
     <span class="tab-icon">📁</span>
@@ -552,82 +558,27 @@ main {
     </div>
   </div>
 
-  <!-- FORM PANEL -->
-  <div class="panel" id="panel-form">
-
-    <!-- Identificação -->
+  <!-- TASKS PANEL -->
+  <div class="panel" id="panel-tasks">
     <div class="card">
       <div class="card-header">
-        <span class="card-title">Identificação do Paciente</span>
+        <span class="card-title">Checklist Compartilhado</span>
+        <button class="btn small danger" onclick="clearTasks()">🗑 Limpar tudo</button>
+      </div>
+      <div class="form-section" style="padding-bottom: 0;">
+        <div style="display: flex; gap: 10px;">
+          <input type="text" id="taskInput" style="flex:1; padding:11px 13px; border:1.5px solid var(--border); border-radius:var(--radius-s); background:var(--surface); color:var(--text); font-family:inherit; font-size:15px; outline:none;" placeholder="Digite uma nova tarefa..." onkeypress="if(event.key==='Enter') addTask()">
+          <button class="btn primary" onclick="addTask()">Adicionar</button>
+        </div>
       </div>
       <div class="form-section">
-        <div class="field">
-          <label>Nome completo</label>
-          <input type="text" id="f-paciente" data-field="paciente" placeholder="Nome do paciente" autocomplete="off">
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label>Nascimento</label>
-            <input type="date" id="f-nascimento" data-field="nascimento">
-          </div>
-          <div class="field">
-            <label>CPF</label>
-            <input type="text" id="f-cpf" data-field="cpf" placeholder="000.000.000-00" inputmode="numeric">
+        <div id="tasksList" style="display: flex; flex-direction: column; gap: 8px;">
+          <div class="empty-state">
+            <div class="empty-text">Nenhuma tarefa ainda.</div>
           </div>
         </div>
-        <div class="field">
-          <label>Convênio / Plano</label>
-          <input type="text" id="f-convenio" data-field="convenio" placeholder="Particular, Unimed…">
-        </div>
       </div>
     </div>
-
-    <!-- Consulta -->
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Consulta</span>
-      </div>
-      <div class="form-section">
-        <div class="field">
-          <label>Queixa principal</label>
-          <textarea id="f-queixa" data-field="queixa" placeholder="Motivo da consulta…"></textarea>
-        </div>
-        <div class="field">
-          <label>Histórico / Anamnese</label>
-          <textarea id="f-historico" data-field="historico" placeholder="HDA, antecedentes, medicamentos em uso…" style="min-height:110px"></textarea>
-        </div>
-        <div class="field">
-          <label>Exame físico</label>
-          <textarea id="f-exame" data-field="exame" placeholder="Achados do exame…"></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- Conclusão -->
-    <div class="card">
-      <div class="card-header">
-        <span class="card-title">Conclusão</span>
-      </div>
-      <div class="form-section">
-        <div class="field">
-          <label>Hipótese diagnóstica / CID</label>
-          <textarea id="f-hipotese" data-field="hipotese" placeholder="Diagnóstico…"></textarea>
-        </div>
-        <div class="field">
-          <label>Conduta / Prescrição</label>
-          <textarea id="f-conduta" data-field="conduta" placeholder="Tratamento, medicamentos, orientações…" style="min-height:110px"></textarea>
-        </div>
-        <div class="field">
-          <label>Data de retorno</label>
-          <input type="date" id="f-retorno" data-field="retorno">
-        </div>
-      </div>
-      <div class="form-actions">
-        <button class="btn primary" onclick="printForm()">🖨 Imprimir</button>
-        <button class="btn danger" onclick="clearForm()">🗑 Limpar tudo</button>
-      </div>
-    </div>
-
   </div>
 
   <!-- FILES PANEL -->
@@ -706,17 +657,33 @@ function onMessage(msg) {
       break;
     }
 
-    case 'formField': {
-      isRemote = true;
-      const el = document.getElementById(`f-${msg.field}`);
-      if (el) { el.value = msg.value; flashEl(el); }
-      isRemote = false;
+    case 'taskAdded':
+      prependTaskItem(msg.task, true);
+      showSync();
+      break;
+
+    case 'taskToggled': {
+      const tEl = document.querySelector(`.task-item[data-tid="${msg.id}"]`);
+      if (tEl) {
+        tEl.classList.toggle('done', msg.done);
+        const cb = tEl.querySelector('.task-cb');
+        if (cb) cb.checked = msg.done;
+        flashEl(tEl);
+      }
       showSync();
       break;
     }
 
-    case 'clearForm':
-      clearFormFields();
+    case 'taskDeleted': {
+      const tElDel = document.querySelector(`.task-item[data-tid="${msg.id}"]`);
+      if (tElDel) tElDel.remove();
+      checkTasksEmpty();
+      break;
+    }
+
+    case 'tasksCleared':
+      const list = document.getElementById('tasksList');
+      if (list) list.innerHTML = '<div class="empty-state"><div class="empty-text">Nenhuma tarefa ainda.</div></div>';
       break;
 
     case 'clearText':
@@ -753,9 +720,15 @@ function applyFullState(state) {
   document.getElementById('freeTextArea').value = state.freeText || '';
   updateCount();
 
-  for (const [k, v] of Object.entries(state.form || {})) {
-    const el = document.getElementById(`f-${k}`);
-    if (el) el.value = v;
+  const tList = document.getElementById('tasksList');
+  if (tList) {
+    tList.innerHTML = '';
+    const tasks = state.tasks || [];
+    if (!tasks.length) {
+      tList.innerHTML = '<div class="empty-state"><div class="empty-text">Nenhuma tarefa ainda.</div></div>';
+    } else {
+      tasks.forEach(t => prependTaskItem(t, false));
+    }
   }
 
   const list = document.getElementById('filesList');
@@ -805,28 +778,49 @@ function clearText() {
   send({ type: 'clearText' });
 }
 
-// ── Form ──────────────────────────────────────────────
-const fieldTimers = {};
-document.querySelectorAll('[data-field]').forEach(el => {
-  el.addEventListener('input', () => {
-    if (isRemote) return;
-    const field = el.dataset.field;
-    clearTimeout(fieldTimers[field]);
-    fieldTimers[field] = setTimeout(() => {
-      send({ type: 'formField', field, value: el.value });
-    }, 120);
-  });
-});
-
-function clearForm() {
-  if (!confirm('Limpar o prontuário em todos os dispositivos?')) return;
-  clearFormFields();
-  send({ type: 'clearForm' });
+// ── Tasks ──────────────────────────────────────────────
+function addTask() {
+  const input = document.getElementById('taskInput');
+  const text = input.value.trim();
+  if (!text) return;
+  send({ type: 'addTask', text });
+  input.value = '';
 }
-function clearFormFields() {
-  document.querySelectorAll('[data-field]').forEach(el => el.value = '');
+function toggleTask(id, done) {
+  send({ type: 'toggleTask', id, done });
 }
-function printForm() { window.print(); }
+function delTask(id) {
+  if (!confirm('Excluir esta tarefa em todos os dispositivos?')) return;
+  send({ type: 'deleteTask', id });
+}
+function clearTasks() {
+  if (!confirm('Limpar todas as tarefas em todos os dispositivos?')) return;
+  send({ type: 'clearTasks' });
+}
+function prependTaskItem(task, animate) {
+  const list = document.getElementById('tasksList');
+  if (!list) return;
+  const empty = list.querySelector('.empty-state');
+  if (empty) empty.remove();
+  
+  const div = document.createElement('div');
+  div.className = `task-item ${task.done ? 'done' : ''}`;
+  div.dataset.tid = task.id;
+  if (!animate) div.style.animation = 'none';
+  
+  div.innerHTML = `
+    <input type="checkbox" class="task-cb" ${task.done ? 'checked' : ''} onchange="toggleTask('${task.id}', this.checked)">
+    <span class="task-text">${esc(task.text)}</span>
+    <button class="btn icon small danger" onclick="delTask('${task.id}')">✕</button>
+  `;
+  list.appendChild(div);
+}
+function checkTasksEmpty() {
+  const list = document.getElementById('tasksList');
+  if (list && !list.children.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-text">Nenhuma tarefa ainda.</div></div>';
+  }
+}
 
 // ── Files ─────────────────────────────────────────────
 const zone = document.getElementById('uploadZone');

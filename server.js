@@ -20,18 +20,16 @@ if (!fs.existsSync(dbDir)) {
 function loadDB() {
   try {
     if (fs.existsSync(DB_PATH)) {
-      return JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+      const parsed = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
+      if (!parsed.tasks) parsed.tasks = [];
+      return parsed;
     }
   } catch (e) {
     console.error('Erro ao carregar banco:', e.message);
   }
   return {
     freeText: '',
-    form: {
-      paciente: '', nascimento: '', cpf: '', convenio: '',
-      queixa: '', historico: '', exame: '', hipotese: '',
-      conduta: '', retorno: ''
-    },
+    tasks: [],
     files: []
   };
 }
@@ -96,18 +94,36 @@ wss.on('connection', (ws) => {
         broadcast({ type: 'freeText', value: msg.value, from: ws._id }, ws);
         break;
 
-      case 'formField':
-        if (db.form.hasOwnProperty(msg.field)) {
-          db.form[msg.field] = msg.value;
+      case 'addTask':
+        const newTask = {
+          id: Date.now() + Math.random().toString(),
+          text: msg.text,
+          done: false
+        };
+        db.tasks.push(newTask);
+        scheduleDB();
+        broadcast({ type: 'taskAdded', task: newTask, from: ws._id }, ws);
+        break;
+
+      case 'toggleTask':
+        const task = db.tasks.find(t => t.id === msg.id);
+        if (task) {
+          task.done = msg.done;
           scheduleDB();
-          broadcast({ type: 'formField', field: msg.field, value: msg.value, from: ws._id }, ws);
+          broadcast({ type: 'taskToggled', id: msg.id, done: msg.done, from: ws._id }, ws);
         }
         break;
 
-      case 'clearForm':
-        Object.keys(db.form).forEach(k => db.form[k] = '');
+      case 'deleteTask':
+        db.tasks = db.tasks.filter(t => t.id !== msg.id);
         scheduleDB();
-        broadcast({ type: 'clearForm' }, ws);
+        broadcast({ type: 'taskDeleted', id: msg.id, from: ws._id }, ws);
+        break;
+
+      case 'clearTasks':
+        db.tasks = [];
+        scheduleDB();
+        broadcast({ type: 'tasksCleared' }, ws);
         break;
 
       case 'clearText':

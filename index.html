@@ -519,7 +519,13 @@ main {
       <div class="conn-dot" id="connDot"></div>
       <span id="connLabel">Offline</span>
     </div>
-    <div class="devices-pill" id="devicesPill">0 📱</div>
+    <div style="position: relative;">
+      <div class="devices-pill" id="devicesPill" onclick="toggleDevicesList()" style="cursor:pointer; user-select:none;">0 📱</div>
+      <div id="devicesList" class="card" style="display:none; position:absolute; top:35px; right:0; width:220px; z-index:100; box-shadow:var(--shadow);">
+        <div class="card-header"><span class="card-title" style="margin:0;">Dispositivos</span></div>
+        <div id="devicesContainer" style="padding: 10px; display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -706,7 +712,17 @@ function onMessage(msg) {
     }
 
     case 'clients':
-      document.getElementById('devicesPill').textContent = `${msg.count} 📱`;
+      document.getElementById('devicesPill').textContent = `${msg.list.length} 📱`;
+      const container = document.getElementById('devicesContainer');
+      if (container) {
+        container.innerHTML = msg.list.map(c => 
+          `<div style="font-size:13px; display:flex; align-items:center; gap:6px;">
+             ${c.id === myId ? '🟢' : '⚪'} 
+             <strong style="color:var(--text)">${esc(c.name)}</strong>
+             ${c.id === myId ? '<span style="color:var(--muted);font-size:11px;">(Você)</span>' : ''}
+           </div>`
+        ).join('');
+      }
       break;
 
     case 'error':
@@ -957,6 +973,19 @@ function esc(s) {
     .replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;');
 }
+
+function toggleDevicesList() {
+  const list = document.getElementById('devicesList');
+  if (list) list.style.display = list.style.display === 'none' ? 'block' : 'none';
+}
+
+document.addEventListener('click', (e) => {
+  const pill = document.getElementById('devicesPill');
+  const list = document.getElementById('devicesList');
+  if (list && list.style.display === 'block' && pill && !pill.contains(e.target) && !list.contains(e.target)) {
+    list.style.display = 'none';
+  }
+});
 
 // ── Send ──────────────────────────────────────────────
 function send(obj) {

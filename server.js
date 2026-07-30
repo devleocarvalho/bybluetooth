@@ -72,15 +72,32 @@ const wss = new WebSocket.Server({ server });
 const clients = new Set();
 let clientSeq = 0;
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
   clientSeq++;
   ws._id = clientSeq;
+  
+  const ua = req.headers['user-agent'] || '';
+  let deviceName = '💻 PC';
+  if (ua.includes('iPhone')) deviceName = '📱 iPhone';
+  else if (ua.includes('iPad')) deviceName = '📱 iPad';
+  else if (ua.includes('Android')) deviceName = '📱 Android';
+  else if (ua.includes('Windows')) deviceName = '💻 Windows';
+  else if (ua.includes('Mac OS')) deviceName = '💻 Mac';
+  else if (ua.includes('Linux')) deviceName = '💻 Linux';
+  
+  if (ua.includes('Chrome') && !ua.includes('Edg') && !ua.includes('OPR')) deviceName += ' (Chrome)';
+  else if (ua.includes('Safari') && !ua.includes('Chrome') && !ua.includes('Android')) deviceName += ' (Safari)';
+  else if (ua.includes('Firefox')) deviceName += ' (Firefox)';
+  else if (ua.includes('Edg')) deviceName += ' (Edge)';
+  else if (ua.includes('OPR')) deviceName += ' (Opera)';
+
+  ws._deviceName = deviceName;
   clients.add(ws);
-  console.log(`[+] Cliente #${ws._id} conectado  |  total: ${clients.size}`);
+  console.log(`[+] Cliente #${ws._id} (${deviceName}) conectado  |  total: ${clients.size}`);
 
   // Estado completo para o recém-chegado
   safeSend(ws, { type: 'init', state: db, clientId: ws._id });
-  broadcast({ type: 'clients', count: clients.size }, null);
+  broadcastClients();
 
   ws.on('message', (raw) => {
     let msg;
@@ -168,7 +185,7 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     clients.delete(ws);
     console.log(`[-] Cliente #${ws._id} saiu  |  total: ${clients.size}`);
-    broadcast({ type: 'clients', count: clients.size }, null);
+    broadcastClients();
   });
 
   ws.on('error', (err) => {
@@ -182,6 +199,11 @@ function broadcast(msg, exclude) {
   for (const c of clients) {
     if (c !== exclude && c.readyState === WebSocket.OPEN) safeSend(c, null, data);
   }
+}
+
+function broadcastClients() {
+  const list = Array.from(clients).map(c => ({ id: c._id, name: c._deviceName }));
+  broadcast({ type: 'clients', list }, null);
 }
 
 function safeSend(ws, obj, raw) {
